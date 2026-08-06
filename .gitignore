@@ -1,0 +1,17 @@
+# Google Apps Script
+.gs_*
+.clasp.json
+.clasprc.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Credentials (just in case)
+*.pem
+*.key
+secrets.json
