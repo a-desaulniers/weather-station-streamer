@@ -7,7 +7,7 @@ const WL_PASSWORD = PropertiesService.getScriptProperties().getProperty('WL_PASS
 const HOBOLINK_TOKEN = PropertiesService.getScriptProperties().getProperty('HOBOLINK_API_KEY');
 
 const TIMEZONE_OFFSET = '-10800000';
-const IANA_TIMEZONE = 'America%2FHalifax'; // local time
+const IANA_TIMEZONE = 'America%2FHalifax';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
 
 // Davis WeatherLink stations
@@ -28,7 +28,6 @@ const HOBO_SHEET_NAME = 'example8_RX3000';
 const HOBO_LOOKBACK_HOURS = 24; // How far back to fetch on first run
 
 // unit conversions
-
 function fToC(f) {
   if (f === '' || f === undefined || f === null) return '';
   return Math.round((parseFloat(f) - 32) * 5 / 9 * 10) / 10;
@@ -60,7 +59,7 @@ function streamWeatherLinkNetwork() {
   Logger.log('=== Starting combined fetch ===');
   const logSheet = getLogSheet();
 
-  // weatherlink auth
+  // WeatherLink auth
   const authCookie = loginAndGetSession(logSheet);
   if (authCookie) {
     DAVIS_STATIONS.forEach((st, i) => {
@@ -74,6 +73,14 @@ function streamWeatherLinkNetwork() {
 
   // Hobolink API Auth
   fetchHobolinkData(logSheet);
+
+  Logger.log('=== Combined fetch complete ===');
+
+    // Force dashboard to recalculate
+  const dash = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('DASHBOARD');
+  if (dash) {
+    dash.getRange('A1').setValue(dash.getRange('A1').getValue());
+  }
 
   Logger.log('=== Combined fetch complete ===');
 }
@@ -352,7 +359,7 @@ function fetchHobolinkData(logSheet) {
       });
     });
 
-    // append new rows
+    // Append new rows
     const timestamps = Object.keys(readings).map(Number).sort((a, b) => a - b);
     let count = 0;
 
@@ -366,7 +373,7 @@ function fetchHobolinkData(logSheet) {
       const windSpeed = r['Wind Speed'] ?? null;
 
       sheet.appendRow([
-        new Date(ts).toISOString(),
+        new Date(ts + (-1 * parseInt(TIMEZONE_OFFSET))).toISOString(),
         roundVal(temp),
         roundVal(rh),
         roundVal(r['Dew Point']),
@@ -394,7 +401,7 @@ function fetchHobolinkData(logSheet) {
   }
 }
 
-//  field calculations for hobolink
+// field calculations
 
 function calcHeatIndex(tempC, rh) {
   if (tempC === null || rh === null) return '';
@@ -422,7 +429,7 @@ function roundVal(val) {
   return Math.round(parseFloat(val) * 100) / 100;
 }
 
-	// helpers 
+    // --- helpers ---
 
 function extractCookies(setCookie) {
   if (!setCookie) return [];
@@ -436,15 +443,22 @@ function getLogSheet() {
   let log = ss.getSheetByName('Log');
   if (!log) {
     log = ss.insertSheet('Log');
-    log.appendRow(['Timestamp', 'Sheet', 'Status', 'Details']);
+    log.appendRow(['Timestamp (UTC)', 'Sheet', 'Status', 'Details']);
   }
   return log;
 }
 
 function logRun(logSheet, sheet, status, details) {
   try {
-    logSheet.appendRow([new Date(), sheet, status, details]);
+    logSheet.appendRow([new Date().toISOString(), sheet, status, details]);
   } catch(e) {
     Logger.log(`Log error: ${e}`);
   }
 }
+
+
+
+
+
+
+
